@@ -3,13 +3,17 @@ import json
 import random
 import html
 import requests
-import time  # <--- לינוקס: ייבוא ספריית הזמן
-from pydantic import BaseModel, ValidationError
-from typing import List, Optional
+import time
 import os
 from dotenv import load_dotenv
+from pydantic import BaseModel, ValidationError
+from typing import List, Optional
+from colorama import Fore, Style, init
 
-load_dotenv() # טוען את הקבצים מה-env.
+# אתחול colorama - חשוב כדי שיעבוד טוב גם ב-WSL וגם בטרמינלים שונים
+init(autoreset=True)
+
+load_dotenv()
 password = os.getenv("DB_PASSWORD")
 
 # --- Classes & Pydantic ---
@@ -41,20 +45,14 @@ class TriviaGame:
                     q.prepare_answers()
                     self.questions_pool.append(q)
             random.shuffle(self.questions_pool)
-            print(f"Loaded {len(self.questions_pool)} questions from file.")
-        except FileNotFoundError:
-            print(f"Error: The file '{file_path}' was not found.")
+            print(f"{Fore.CYAN}Loaded {len(self.questions_pool)} questions from file.{Style.RESET_ALL}")
+            return True
+        except Exception as e:
+            print(f"{Fore.RED}Error loading file: {e}{Style.RESET_ALL}")
             return False
-        except json.JSONDecodeError:
-            print(f"Error: Failed to decode JSON from '{file_path}'.")
-            return False
-        except ValidationError as e:
-            print(f"Error: Data in file doesn't match the required format: {e}")
-            return False
-        return True
 
     def fetch_from_api(self):
-        print("Fetching extra questions from API...")
+        print(f"{Fore.YELLOW}Fetching extra questions from API...{Style.RESET_ALL}")
         url = "https://opentdb.com/api.php?amount=5&type=multiple"
         try:
             response = requests.get(url)
@@ -70,59 +68,57 @@ class TriviaGame:
                 q.prepare_answers()
                 self.questions_pool.append(q)
         except Exception as e:
-            print(f"Could not reach API: {e}")
+            print(f"{Fore.RED}Could not reach API: {e}{Style.RESET_ALL}")
 
     def play(self):
         if not self.questions_pool:
-            print("No questions available. Game over.")
+            print(f"{Fore.RED}No questions available. Game over.{Style.RESET_ALL}")
             return
 
-        print(f"\n🎮 Game starts with {len(self.players_scores)} players!")
+        print(f"\n{Fore.MAGENTA}🎮 Game starts with {len(self.players_scores)} players!{Style.RESET_ALL}")
         
         while self.questions_pool or self.current_question:
-            print(f"\n{'='*20}\nPLAYER {self.current_player_idx + 1} TURN")
+            print(f"\n{Fore.BLUE}{'='*20}\nPLAYER {self.current_player_idx + 1} TURN{Style.RESET_ALL}")
             
             if not self.current_question:
                 self.current_question = self.questions_pool.pop(0)
 
-            print(f"Question: {self.current_question.question}")
+            print(f"{Fore.WHITE}{Style.BRIGHT}Question: {self.current_question.question}")
             for i, ans in enumerate(self.current_question.all_answers):
-                print(f"{i+1}. {ans}")
+                print(f"{Fore.CYAN}{i+1}. {ans}")
 
-            # --- לוגיקת טיימר חדשה ---
-            start_time = time.time()  # תיעוד רגע הצגת השאלה
+            start_time = time.time()
             
             try:
-                user_input = input("Your answer (10s limit): ")
-                end_time = time.time()  # תיעוד רגע הלחיצה על Enter
+                user_input = input(f"\n{Fore.YELLOW}Your answer (10s limit): {Style.RESET_ALL}")
+                end_time = time.time()
+                elapsed = end_time - start_time
                 
-                elapsed = end_time - start_time  # חישוב הפרש הזמנים
-                
-                if elapsed > 40:
-                    print(f"⏰ TOO SLOW! It took you {elapsed:.2f} seconds. No points!")
-                    self.current_question = None  # זורקים את השאלה וממשיכים
+                if elapsed > 10: # שיניתי ל-10 שניות כפי שכתוב ב-input
+                    print(f"{Fore.RED}⏰ TOO SLOW! It took you {elapsed:.2f} seconds. No points!{Style.RESET_ALL}")
+                    self.current_question = None
                 else:
                     choice = int(user_input) - 1
                     if self.current_question.all_answers[choice] == self.current_question.correct_answer:
-                        print(f"✅ Correct! (Time: {elapsed:.2f}s)")
+                        print(f"{Fore.GREEN}✅ CORRECT! (Time: {elapsed:.2f}s){Style.RESET_ALL}")
                         self.players_scores[self.current_player_idx] += 1
                         self.current_question = None
                     else:
-                        print(f"❌ Wrong! (Time: {elapsed:.2f}s)")
-                        # הערה: בגרסה זו, אם טועים השאלה נשארת לשחקן הבא? 
-                        # הקוד המקורי שלך לא איפס את current_question בטעות, אז השארתי ככה.
+                        print(f"{Fore.RED}❌ WRONG! (Time: {elapsed:.2f}s){Style.RESET_ALL}")
+                        # אם אתה רוצה שהשאלה תעבור לשחקן הבא, אל תאפס את current_question
             
             except (ValueError, IndexError):
-                print("Invalid input! Treat as wrong answer.")
+                print(f"{Fore.RED}Invalid input! Treat as wrong answer.{Style.RESET_ALL}")
 
             self.current_player_idx = (self.current_player_idx + 1) % len(self.players_scores)
 
         self.show_results()
 
     def show_results(self):
-        print("\n--- FINAL SCORES ---")
+        print(f"\n{Fore.YELLOW}{Style.BRIGHT}--- FINAL SCORES ---{Style.RESET_ALL}")
         for i, score in enumerate(self.players_scores):
-            print(f"Player {i+1}: {score}")
+            color = Fore.GREEN if score == max(self.players_scores) else Fore.WHITE
+            print(f"{color}Player {i+1}: {score}{Style.RESET_ALL}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Advanced Trivia Game")
@@ -131,14 +127,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     game = TriviaGame(num_players=args.players)
-    
-    # טעינה מהקובץ הקטן שיצרנו
     game.load_questions_from_file(args.file)
-    
-    # הוספת שאלות מהאינטרנט (API)
     game.fetch_from_api() 
     
     if game.questions_pool:
         game.play()
     else:
-        print("No questions found anywhere!")
+        print(f"{Fore.RED}Failed to start game due to file error.{Style.RESET_ALL}")
