@@ -6,6 +6,11 @@ import requests
 import time  # <--- לינוקס: ייבוא ספריית הזמן
 from pydantic import BaseModel, ValidationError
 from typing import List, Optional
+import os
+from dotenv import load_dotenv
+
+load_dotenv() # טוען את הקבצים מה-env.
+password = os.getenv("DB_PASSWORD")
 
 # --- Classes & Pydantic ---
 class Question(BaseModel):
@@ -127,7 +132,13 @@ if __name__ == "__main__":
 
     game = TriviaGame(num_players=args.players)
     
-    if game.load_questions_from_file(args.file):
+    # טעינה מהקובץ הקטן שיצרנו
+    game.load_questions_from_file(args.file)
+    
+    # הוספת שאלות מהאינטרנט (API)
+    game.fetch_from_api() 
+    
+    if game.questions_pool:
         game.play()
     else:
-        print("Failed to start game due to file error.")
+        print("No questions found anywhere!")
