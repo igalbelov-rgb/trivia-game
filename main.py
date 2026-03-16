@@ -1,10 +1,12 @@
 import argparse
-import requests
+import json
 import random
 import html
-from pydantic import BaseModel
+import requests
+from pydantic import BaseModel, ValidationError
 from typing import List, Optional
 
+# --- Classes & Pydantic ---
 class Question(BaseModel):
     category: str
     difficulty: str
@@ -14,7 +16,6 @@ class Question(BaseModel):
     all_answers: List[str] = []
 
     def prepare_answers(self):
-        # Create a shuffled list of all possible answers
         self.all_answers = self.incorrect_answers + [self.correct_answer]
         random.shuffle(self.all_answers)
 
@@ -22,22 +23,40 @@ class TriviaGame:
     def __init__(self, num_players: int):
         self.players_scores = [0] * num_players
         self.current_player_idx = 0
+        self.questions_pool: List[Question] = []
         self.current_question: Optional[Question] = None
-        self.categories = {
-            "1": {"name": "General Knowledge", "id": 9},
-            "2": {"name": "Science & Nature", "id": 17},
-            "3": {"name": "History", "id": 23},
-            "4": {"name": "Geography", "id": 22}
-        }
-        self.difficulties = ["easy", "medium", "hard"]
 
-    def fetch_single_question(self, category_id: int, difficulty: str):
-        url = f"https://opentdb.com/api.php?amount=1&category={category_id}&difficulty={difficulty}&type=multiple"
+    # --- JSON Parsing & Exceptions ---
+    def load_questions_from_file(self, file_path: str):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                for item in data:
+                    # שימוש ב-Pydantic לתיקוף הנתונים מהקובץ
+                    q = Question(**item)
+                    q.prepare_answers()
+                    self.questions_pool.append(q)
+            random.shuffle(self.questions_pool) # דרישה: סדר שאלות שונה בכל פעם
+            print(f"Loaded {len(self.questions_pool)} questions from file.")
+        except FileNotFoundError:
+            print(f"Error: The file '{file_path}' was not found.")
+            return False
+        except json.JSONDecodeError:
+            print(f"Error: Failed to decode JSON from '{file_path}'.")
+            return False
+        except ValidationError as e:
+            print(f"Error: Data in file doesn't match the required format: {e}")
+            return False
+        return True
+
+    # --- Extra Feature: API ---
+    def fetch_from_api(self):
+        print("Fetching extra questions from API...")
+        url = "https://opentdb.com/api.php?amount=5&type=multiple"
         try:
             response = requests.get(url)
             data = response.json()
-            if data["response_code"] == 0:
-                item = data["results"][0]
+            for item in data["results"]:
                 q = Question(
                     category=item["category"],
                     difficulty=item["difficulty"],
@@ -46,85 +65,58 @@ class TriviaGame:
                     incorrect_answers=[html.unescape(ans) for ans in item["incorrect_answers"]]
                 )
                 q.prepare_answers()
-                return q
-        except Exception:
-            print("Error connecting to the trivia server.")
-        return None
-
-    def get_user_preferences(self):
-        print("\n--- SELECT CATEGORY ---")
-        for key, val in self.categories.items():
-            print(f"{key}. {val['name']}")
-        
-        cat_choice = input("Enter category number: ")
-        while cat_choice not in self.categories:
-            cat_choice = input("Invalid choice. Try again: ")
-            
-        print("\n--- SELECT DIFFICULTY (easy, medium, hard) ---")
-        diff_choice = input("Enter difficulty: ").lower()
-        while diff_choice not in self.difficulties:
-            diff_choice = input("Invalid choice. Try again: ")
-            
-        return self.categories[cat_choice]['id'], diff_choice
+                self.questions_pool.append(q)
+        except Exception as e:
+            print(f"Could not reach API: {e}")
 
     def play(self):
-        print(f"🎮 Game started with {len(self.players_scores)} players! 🎮")
-        
-        while True:
-            print(f"\n{'='*30}")
-            print(f"PLAYER {self.current_player_idx + 1} TURN")
-            
-            # If no inherited question, ask for preferences
-            if not self.current_question:
-                cat_id, diff = self.get_user_preferences()
-                self.current_question = self.fetch_single_question(cat_id, diff)
-                if not self.current_question:
-                    print("No questions found, trying again...")
-                    continue
+        if not self.questions_pool:
+            print("No questions available. Game over.")
+            return
 
-            print(f"\nCategory: {self.current_question.category} ({self.current_question.difficulty})")
+        print(f"\n🎮 Game starts with {len(self.players_scores)} players!")
+        
+        while self.questions_pool or self.current_question:
+            print(f"\n{'='*20}\nPLAYER {self.current_player_idx + 1} TURN")
+            
+            if not self.current_question:
+                self.current_question = self.questions_pool.pop(0)
+
             print(f"Question: {self.current_question.question}")
             for i, ans in enumerate(self.current_question.all_answers):
                 print(f"{i+1}. {ans}")
 
             try:
-                ans_idx = int(input("\nYour answer (number): ")) - 1
-                selected = self.current_question.all_answers[ans_idx]
+                choice = int(input("Your answer: ")) - 1
+                if self.current_question.all_answers[choice] == self.current_question.correct_answer:
+                    print("✅ Correct!")
+                    self.players_scores[self.current_player_idx] += 1
+                    self.current_question = None
+                else:
+                    print("❌ Wrong! Passing to next player...")
             except (ValueError, IndexError):
-                print("Invalid input.")
-                continue
+                print("Invalid input! Treat as wrong answer.")
 
-            if selected == self.current_question.correct_answer:
-                print("✅ Correct! You got a point.")
-                self.players_scores[self.current_player_idx] += 1
-                self.current_question = None  # Question solved
-            else:
-                print("❌ Wrong! The question passes to the next player.")
-
-            # Move to next player
             self.current_player_idx = (self.current_player_idx + 1) % len(self.players_scores)
-            
-            cont = input("\nKeep playing? (y/n): ")
-            if cont.lower() != 'y':
-                break
 
         self.show_results()
 
     def show_results(self):
-        print("\n" + "🏆" * 10)
-        print("FINAL RESULTS:")
+        print("\n--- FINAL SCORES ---")
         for i, score in enumerate(self.players_scores):
-            print(f"Player {i+1}: {score} points")
-        
-        max_score = max(self.players_scores)
-        winners = [i+1 for i, s in enumerate(self.players_scores) if s == max_score]
-        print(f"Winner(s): Player {winners}")
-        print("🏆" * 10)
+            print(f"Player {i+1}: {score}")
 
+# --- Main Entry Point with Argparse ---
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--players", type=int, default=2)
+    parser = argparse.ArgumentParser(description="Advanced Trivia Game")
+    parser.add_argument("file", help="Path to the questions JSON file")
+    parser.add_argument("--players", type=int, default=2, help="Number of players")
     args = parser.parse_args()
 
     game = TriviaGame(num_players=args.players)
-    game.play()
+    
+    # ניסיון טעינה מהקובץ
+    if game.load_questions_from_file(args.file):
+        game.play()
+    else:
+        print("Failed to start game due to file error.")
