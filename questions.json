@@ -1,0 +1,100 @@
+[
+  {
+    "category": "Science",
+    "difficulty": "easy",
+    "question": "What is the chemical symbol for Water?",
+    "correct_answer": "H2O",
+    "incorrect_answers": ["O2", "CO2", "HO2"]
+  },
+  {
+    "category": "History",
+    "difficulty": "hard",
+    "question": "In which year did the French Revolution start?",
+    "correct_answer": "1789",
+    "incorrect_answers": ["1776", "1812", "1848"]
+  },
+  {
+    "category": "Geography",
+    "difficulty": "medium",
+    "question": "Which is the largest desert in the world?",
+    "correct_answer": "Sahara",
+    "incorrect_answers": ["Gobi", "Kalahari", "Patagonian"]
+  },
+  {
+    "category": "Sports",
+    "difficulty": "easy",
+    "question": "How many players are there on a basketball team on the court?",
+    "correct_answer": "5",
+    "incorrect_answers": ["6", "7", "4"]
+  },
+  {
+    "category": "Science",
+    "difficulty": "medium",
+    "question": "What is the speed of light in vacuum (approx)?",
+    "correct_answer": "299,792 km/s",
+    "incorrect_answers": ["150,000 km/s", "450,000 km/s", "299,792 m/s"]
+  },
+  {
+    "category": "History",
+    "difficulty": "medium",
+    "question": "Who was the first person to step on the Moon?",
+    "correct_answer": "Neil Armstrong",
+    "incorrect_answers": ["Buzz Aldrin", "Michael Collins", "Yuri Gagarin"]
+  },
+  {
+    "category": "Entertainment",
+    "difficulty": "medium",
+    "question": "Which movie features the quote 'I'll be back'?",
+    "correct_answer": "The Terminator",
+    "incorrect_answers": ["Terminator 2", "Predator", "Robocop"]
+  },
+  {
+    "category": "Literature",
+    "difficulty": "hard",
+    "question": "Who wrote 'Pride and Prejudice'?",
+    "correct_answer": "Jane Austen",
+    "incorrect_answers": ["Charlotte Bronte", "Mary Shelley", "Emily Dickinson"]
+  },
+  {
+    "category": "Science",
+    "difficulty": "medium",
+    "question": "What planet is known as the Red Planet?",
+    "correct_answer": "Mars",
+    "incorrect_answers": ["Venus", "Jupiter", "Mercury"]
+  },
+  {
+    "category": "Science",
+    "difficulty": "easy",
+    "question": "What is the center of an atom called?",
+    "correct_answer": "Nucleus",
+    "incorrect_answers": ["Electron", "Proton", "Orbit"]
+  },
+  {
+    "category": "History",
+    "difficulty": "easy",
+    "question": "Which U.S. President issued the Emancipation Proclamation?",
+    "correct_answer": "Abraham Lincoln",
+    "incorrect_answers": ["George Washington", "Thomas Jefferson", "Theodore Roosevelt"]
+  },
+  {
+    "category": "Sports",
+    "difficulty": "medium",
+    "question": "How many Grand Slam tennis tournaments are there in a year?",
+    "correct_answer": "4",
+    "incorrect_answers": ["3", "5", "6"]
+  },
+  {
+    "category": "Geography",
+    "difficulty": "hard",
+    "question": "What is the capital of Mongolia?",
+    "correct_answer": "Ulaanbaatar",
+    "incorrect_answers": ["Astana", "Tashkent", "Bishkek"]
+  },
+  {
+    "category": "Entertainment",
+    "difficulty": "hard",
+    "question": "Which singer is known as the 'Queen of Pop'?",
+    "correct_answer": "Madonna",
+    "incorrect_answers": ["Beyonce", "Lady Gaga", "Taylor Swift"]
+  }
+]
