@@ -1,3 +1,14 @@
 /venv
 .env
+.gitignore
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.db
+scores.json
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
 gitpassword.txt
