@@ -1,4 +1,3 @@
-import argparse
 import json
 import os
 import random
@@ -82,7 +81,7 @@ class TriviaGame:
             logger.error("File not found: %s", file_path)
         except json.JSONDecodeError as e:
             logger.error("JSON decode error: %s", e)
-        except Exception as e:
+        except Exception:
             logger.exception("Error while loading questions")
 
         return False

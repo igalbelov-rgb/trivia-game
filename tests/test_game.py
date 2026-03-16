@@ -1,6 +1,4 @@
 import json
-from pathlib import Path
-from models import Question
 from game import TriviaGame
 
 
