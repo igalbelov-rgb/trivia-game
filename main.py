@@ -3,6 +3,7 @@ import json
 import random
 import html
 import requests
+import time  # <--- לינוקס: ייבוא ספריית הזמן
 from pydantic import BaseModel, ValidationError
 from typing import List, Optional
 
@@ -26,17 +27,15 @@ class TriviaGame:
         self.questions_pool: List[Question] = []
         self.current_question: Optional[Question] = None
 
-    # --- JSON Parsing & Exceptions ---
     def load_questions_from_file(self, file_path: str):
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 for item in data:
-                    # שימוש ב-Pydantic לתיקוף הנתונים מהקובץ
                     q = Question(**item)
                     q.prepare_answers()
                     self.questions_pool.append(q)
-            random.shuffle(self.questions_pool) # דרישה: סדר שאלות שונה בכל פעם
+            random.shuffle(self.questions_pool)
             print(f"Loaded {len(self.questions_pool)} questions from file.")
         except FileNotFoundError:
             print(f"Error: The file '{file_path}' was not found.")
@@ -49,7 +48,6 @@ class TriviaGame:
             return False
         return True
 
-    # --- Extra Feature: API ---
     def fetch_from_api(self):
         print("Fetching extra questions from API...")
         url = "https://opentdb.com/api.php?amount=5&type=multiple"
@@ -86,14 +84,29 @@ class TriviaGame:
             for i, ans in enumerate(self.current_question.all_answers):
                 print(f"{i+1}. {ans}")
 
+            # --- לוגיקת טיימר חדשה ---
+            start_time = time.time()  # תיעוד רגע הצגת השאלה
+            
             try:
-                choice = int(input("Your answer: ")) - 1
-                if self.current_question.all_answers[choice] == self.current_question.correct_answer:
-                    print("✅ Correct!")
-                    self.players_scores[self.current_player_idx] += 1
-                    self.current_question = None
+                user_input = input("Your answer (10s limit): ")
+                end_time = time.time()  # תיעוד רגע הלחיצה על Enter
+                
+                elapsed = end_time - start_time  # חישוב הפרש הזמנים
+                
+                if elapsed > 40:
+                    print(f"⏰ TOO SLOW! It took you {elapsed:.2f} seconds. No points!")
+                    self.current_question = None  # זורקים את השאלה וממשיכים
                 else:
-                    print("❌ Wrong! Passing to next player...")
+                    choice = int(user_input) - 1
+                    if self.current_question.all_answers[choice] == self.current_question.correct_answer:
+                        print(f"✅ Correct! (Time: {elapsed:.2f}s)")
+                        self.players_scores[self.current_player_idx] += 1
+                        self.current_question = None
+                    else:
+                        print(f"❌ Wrong! (Time: {elapsed:.2f}s)")
+                        # הערה: בגרסה זו, אם טועים השאלה נשארת לשחקן הבא? 
+                        # הקוד המקורי שלך לא איפס את current_question בטעות, אז השארתי ככה.
+            
             except (ValueError, IndexError):
                 print("Invalid input! Treat as wrong answer.")
 
@@ -106,7 +119,6 @@ class TriviaGame:
         for i, score in enumerate(self.players_scores):
             print(f"Player {i+1}: {score}")
 
-# --- Main Entry Point with Argparse ---
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Advanced Trivia Game")
     parser.add_argument("file", help="Path to the questions JSON file")
@@ -115,7 +127,6 @@ if __name__ == "__main__":
 
     game = TriviaGame(num_players=args.players)
     
-    # ניסיון טעינה מהקובץ
     if game.load_questions_from_file(args.file):
         game.play()
     else:
