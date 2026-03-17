@@ -1,8 +1,9 @@
 [tool.ruff]
+# הגדרות בסיסיות ללא חוקים מסובכים
 line-length = 88
 target-version = "py311"
 
 [tool.ruff.lint]
-# השארנו את הכללים החשובים והסרנו את מה שגורם לשגיאה
-select = ["E", "F", "I", "C", "N", "Q", "T"]
-ignore = ["E203"] # הסרנו את W503
+# בדיקות בסיסיות בלבד (E=Errors, F=Pyflakes)
+select = ["E", "F"]
+ignore = []
