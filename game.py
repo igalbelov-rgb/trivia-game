@@ -1,3 +1,4 @@
+# game.py
 import json
 import os
 import random
@@ -7,19 +8,24 @@ import sys
 import select
 import requests
 from pathlib import Path
-from datetime import datetime
 from typing import List, Optional
-
 from colorama import Fore, Style, init
 from models import Question
+from prometheus_client import Counter, Gauge
+
+# מטריקות גלובליות - לא נוגעות בלוגיקה הקיימת
+QUESTIONS_TOTAL = Counter('trivia_questions_asked_total', 'Total number of questions asked')
+CORRECT_ANSWERS = Counter('trivia_correct_answers_total', 'Total number of correct answers')
+PLAYER_SCORE = Gauge('trivia_player_score', 'Current score of players', ['player_id'])
 
 init(autoreset=True)
 logger = logging.getLogger(__name__)
 
+# Centralized configuration
 TIME_LIMIT_SEC = 30
 API_QUESTION_COUNT = 5
 MAX_QUESTIONS_PER_PLAYER = 10
-
+MAX_QUESTIONS_TOTAL = 100  # Global cap
 
 class TriviaGame:
     def __init__(
@@ -33,6 +39,7 @@ class TriviaGame:
         if max_questions_per_player < 1:
             raise ValueError("Max questions per player must be at least 1")
 
+        self.num_players = num_players
         self.players_scores = [0] * num_players
         self.player_question_count = [0] * num_players
         self.current_player_idx = 0
@@ -42,8 +49,10 @@ class TriviaGame:
         self.current_question_retry = False
         self.time_limit = time_limit
         self.max_questions_per_player = max_questions_per_player
-        self.max_questions_total = num_players * max_questions_per_player
+        self.max_questions_total = min(num_players * max_questions_per_player, MAX_QUESTIONS_TOTAL)
         self.asked_questions = 0
+        for i in range(self.num_players):
+            PLAYER_SCORE.labels(player_id=f"player_{i+1}").set(0)
 
     @staticmethod
     def clear_screen():
@@ -193,6 +202,7 @@ class TriviaGame:
         while any(count < self.max_questions_per_player for count in self.player_question_count) and (self.questions_pool or self.current_question):
             self.show_status()
 
+            
             if self.player_question_count[self.current_player_idx] >= self.max_questions_per_player:
                 self.current_player_idx = (self.current_player_idx + 1) % len(self.players_scores)
                 continue
@@ -208,10 +218,12 @@ class TriviaGame:
                 self.current_question_retry = False
                 self.player_question_count[self.current_player_idx] += 1
                 self.asked_questions += 1
+                QUESTIONS_TOTAL.inc()
             elif self.current_question_owner != self.current_player_idx:
                 self.current_question_owner = self.current_player_idx
                 self.player_question_count[self.current_player_idx] += 1
                 self.asked_questions += 1
+                QUESTIONS_TOTAL.inc()
 
             print(f"\n{Fore.BLUE}PLAYER {player_no} TURN{Style.RESET_ALL}")
             print(f"{Fore.YELLOW}Question {self.asked_questions}/{self.max_questions_total}:{Style.RESET_ALL} {Fore.CYAN}{self.current_question.question}{Style.RESET_ALL}")
@@ -243,6 +255,8 @@ class TriviaGame:
                     if self.current_question.all_answers[choice] == self.current_question.correct_answer:
                         print(f"{Fore.GREEN}Correct! Time: {elapsed:.2f}s{Style.RESET_ALL}")
                         self.players_scores[self.current_player_idx] += 1
+                        CORRECT_ANSWERS.inc()
+                        PLAYER_SCORE.labels(player_id=f"player_{self.current_player_idx + 1}").set(self.players_scores[self.current_player_idx])
                         self.current_question = None
                         self.current_question_owner = None
                         self.current_question_retry = False

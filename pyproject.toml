@@ -1,0 +1,5 @@
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "I", "C", "N", "Q", "T"]
+ignore = ["E203", "W503"]
+# Optionally enable automatic fix in CI by running `ruff check --fix .`
