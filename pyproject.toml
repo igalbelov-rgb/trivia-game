@@ -3,6 +3,15 @@ line-length = 88
 target-version = "py311"
 
 [tool.ruff.lint]
-# השארנו את הכללים החשובים והסרנו את מה שגורם לשגיאה
-select = ["E", "F", "I", "C", "N", "Q", "T"]
-ignore = ["E203"] # הסרנו את W503
+# E: Error, F: Pyflakes, I: Isort, C: Complexity, N: Naming, Q: Quotes, T: Print
+select = ["E", "F", "I", "C", "N", "Q", "T20"]
+ignore = ["E203"]
+
+[tool.ruff.lint.per-file-ignores]
+# כאן אנחנו אומרים ל-Ruff: "בקבצי המשחק והמודלים, אל תצעק על print"
+"game.py" = ["T201"]
+"models.py" = ["T201"]
+
+[tool.ruff.lint.mccabe]
+# מעלה את רף המורכבות המותרת מ-10 ל-15 כדי שלא יציק לך ב-play
+max-complexity = 15

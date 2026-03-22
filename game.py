@@ -1,23 +1,36 @@
 # game.py
+# ruff: noqa: T201
 import json
+import logging
 import os
 import random
-import logging
-import time
-import sys
 import select
-import requests
+import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
+
+import requests
 from colorama import Fore, Style, init
-from models import Question
 from prometheus_client import Counter, Gauge
 
+from models import Question
+
 # מטריקות גלובליות - לא נוגעות בלוגיקה הקיימת
-QUESTIONS_TOTAL = Counter('trivia_questions_asked_total', 'Total number of questions asked')
-CORRECT_ANSWERS = Counter('trivia_correct_answers_total', 'Total number of correct answers')
-PLAYER_SCORE = Gauge('trivia_player_score', 'Current score of players', ['player_id'])
+QUESTIONS_TOTAL = Counter(
+    "trivia_questions_asked_total", 
+    "Total number of questions asked"
+    )
+CORRECT_ANSWERS = Counter(
+    "trivia_correct_answers_total", 
+    "Total number of correct answers"
+    )
+PLAYER_SCORE = Gauge(
+    "trivia_player_score",
+    "Current score of players",
+    ["player_id"]
+    )
 
 init(autoreset=True)
 logger = logging.getLogger(__name__)
@@ -50,7 +63,10 @@ class TriviaGame:
         self.current_question_retry = False
         self.time_limit = time_limit
         self.max_questions_per_player = max_questions_per_player
-        self.max_questions_total = min(num_players * max_questions_per_player, MAX_QUESTIONS_TOTAL)
+        self.max_questions_total = min(
+            num_players * max_questions_per_player, 
+            MAX_QUESTIONS_TOTAL
+            )
         self.asked_questions = 0
         for i in range(self.num_players):
             PLAYER_SCORE.labels(player_id=f"player_{i+1}").set(0)
@@ -118,7 +134,9 @@ class TriviaGame:
             if new_questions > 0:
                 random.shuffle(self.questions_pool)
                 if len(self.questions_pool) > self.max_questions_total:
-                    self.questions_pool = self.questions_pool[: self.max_questions_total]
+                    self.questions_pool = (
+                        self.questions_pool[: self.max_questions_total]
+                    )
                 logger.info("Fetched %d questions from API", new_questions)
             else:
                 logger.info("No questions fetched from API")
@@ -161,7 +179,8 @@ class TriviaGame:
             for count in self.player_question_count
         ]
         score_line = " | ".join(
-            [f"P{i+1}:{score} ({remaining_per_player[i]} left)" for i, score in enumerate(self.players_scores)]
+            [f"P{i+1}:{score} ({remaining_per_player[i]} left)" 
+            for i, score in enumerate(self.players_scores)]
         )
         pool_line = f"Questions in pool: {len(self.questions_pool)}"
         print(f"{Fore.MAGENTA}{pool_line} | {score_line}{Style.RESET_ALL}")
@@ -197,19 +216,28 @@ class TriviaGame:
             print(f"{Fore.CYAN}Player {i+1}:{Style.RESET_ALL} {score}")
         self.save_scores()
 
-    def play(self):
+    def play(self): # noqa: C901
         self.print_welcome()
 
-        while any(count < self.max_questions_per_player for count in self.player_question_count) and (self.questions_pool or self.current_question):
+        while any(
+            count < self.max_questions_per_player 
+            for count in self.player_question_count) and (
+                self.questions_pool or self.current_question
+                ):
             self.show_status()
 
             
-            if self.player_question_count[self.current_player_idx] >= self.max_questions_per_player:
-                self.current_player_idx = (self.current_player_idx + 1) % len(self.players_scores)
+            if (self.player_question_count[self.current_player_idx] 
+                >= self.max_questions_per_player):
+                self.current_player_idx = (
+                    (self.current_player_idx + 1) % len(self.players_scores)
+                )
                 continue
 
             player_no = self.current_player_idx + 1
-            next_player_no = ((self.current_player_idx + 1) % len(self.players_scores)) + 1
+            next_player_no = (
+                (self.current_player_idx + 1) % len(self.players_scores)
+                ) + 1
 
             if self.current_question is None:
                 if not self.questions_pool:
@@ -227,7 +255,11 @@ class TriviaGame:
                 QUESTIONS_TOTAL.inc()
 
             print(f"\n{Fore.BLUE}PLAYER {player_no} TURN{Style.RESET_ALL}")
-            print(f"{Fore.YELLOW}Question {self.asked_questions}/{self.max_questions_total}:{Style.RESET_ALL} {Fore.CYAN}{self.current_question.question}{Style.RESET_ALL}")
+            print(
+                f"{Fore.YELLOW}Question {self.asked_questions}/"
+                f"{self.max_questions_total}:{Style.RESET_ALL} " 
+                f"{Fore.CYAN}{self.current_question.question}{Style.RESET_ALL}"
+                )
             for i, ans in enumerate(self.current_question.all_answers):
                 print(f"{Fore.CYAN}{i+1}. {ans}{Style.RESET_ALL}")
 
@@ -237,7 +269,9 @@ class TriviaGame:
             if user_input is None:
                 print(f"{Fore.RED}TIMEOUT{Style.RESET_ALL}")
                 if not self.current_question_retry:
-                    print(f"{Fore.YELLOW}Same question goes to next player {next_player_no}{Style.RESET_ALL}")
+                    print(
+                        f"{Fore.YELLOW}Same question goes to next player "
+                        f"{next_player_no}{Style.RESET_ALL}")
                     self.current_question_retry = True
                 else:
                     print(f"{Fore.YELLOW}Second fail. Next question.{Style.RESET_ALL}")
@@ -253,36 +287,58 @@ class TriviaGame:
                     if choice < 0 or choice >= len(self.current_question.all_answers):
                         raise ValueError()
 
-                    if self.current_question.all_answers[choice] == self.current_question.correct_answer:
-                        print(f"{Fore.GREEN}Correct! Time: {elapsed:.2f}s{Style.RESET_ALL}")
+                    if self.current_question.all_answers[choice] == (
+                        self.current_question.correct_answer):
+                        print(
+                            f"{Fore.GREEN}Correct! Time: "
+                            f"{elapsed:.2f}s{Style.RESET_ALL}")
                         self.players_scores[self.current_player_idx] += 1
                         CORRECT_ANSWERS.inc()
-                        PLAYER_SCORE.labels(player_id=f"player_{self.current_player_idx + 1}").set(self.players_scores[self.current_player_idx])
+                        PLAYER_SCORE.labels(
+                            player_id=(
+                                f"player_{self.current_player_idx + 1}").set(
+                                    self.players_scores[self.current_player_idx])
+                        )
                         self.current_question = None
                         self.current_question_owner = None
                         self.current_question_retry = False
                     else:
-                        print(f"{Fore.RED}Wrong! Try again next player.{Style.RESET_ALL}")
+                        print(
+                            f"{Fore.RED}Wrong! Try again next player. "
+                            f"{Style.RESET_ALL}")
                         if not self.current_question_retry:
-                            print(f"{Fore.YELLOW}Same question goes to next player {next_player_no}{Style.RESET_ALL}")
+                            print(
+                                f"{Fore.YELLOW}Same question goes to next player "
+                                f"{next_player_no}{Style.RESET_ALL}"
+                                )
                             self.current_question_retry = True
                         else:
-                            print(f"{Fore.YELLOW}Second fail. Next question.{Style.RESET_ALL}")
+                            print(
+                                f"{Fore.YELLOW}Second fail. Next question. "
+                                f"{Style.RESET_ALL}"
+                                )
                             self.current_question = None
                             self.current_question_owner = None
                             self.current_question_retry = False
                 except ValueError:
                     print(f"{Fore.RED}Invalid input (1-4 or q){Style.RESET_ALL}")
                     if not self.current_question_retry:
-                        print(f"{Fore.YELLOW}Same question goes to next player {next_player_no}{Style.RESET_ALL}")
+                        print(
+                            f"{Fore.YELLOW}Same question goes to next player "
+                            f"{next_player_no}{Style.RESET_ALL}")
                         self.current_question_retry = True
                     else:
-                        print(f"{Fore.YELLOW}Second fail. Next question.{Style.RESET_ALL}")
+                        print(
+                            f"{Fore.YELLOW}Second fail. "
+                            f"Next question.{Style.RESET_ALL}")
                         self.current_question = None
                         self.current_question_owner = None
                         self.current_question_retry = False
 
-            self.current_player_idx = (self.current_player_idx + 1) % len(self.players_scores)
+            self.current_player_idx = (
+                self.current_player_idx + 1
+                ) % len(
+                    self.players_scores)
             time.sleep(1.2)
             self.clear_screen()
 

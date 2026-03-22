@@ -1,6 +1,14 @@
+
+import logging
+
 import requests
-import json
-from config import API_QUESTION_COUNT
+
+try:
+    from config import API_QUESTION_COUNT
+except ImportError:
+    # אם הקובץ לא נמצא, נשתמש בברירת מחדל של 10
+    API_QUESTION_COUNT = 10
+
 
 def fetch_from_api():
     url = f"https://opentdb.com/api.php?amount={API_QUESTION_COUNT}&type=multiple"
@@ -9,5 +17,5 @@ def fetch_from_api():
         data = response.json()
         return data
     except Exception as e:
-        print(f"Error fetching from API: {e}")
+        logging.error(f"Error fetching from API: {e}")
         return None

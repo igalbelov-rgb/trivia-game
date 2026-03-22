@@ -1,6 +1,7 @@
-import random
 import html
+import random
 from typing import List
+
 from pydantic import BaseModel, Field
 
 
@@ -23,5 +24,7 @@ class Question(BaseModel):
             difficulty=item["difficulty"],
             question=html.unescape(item["question"]),
             correct_answer=html.unescape(item["correct_answer"]),
-            incorrect_answers=[html.unescape(ans) for ans in item.get("incorrect_answers", [])],
+            incorrect_answers=[
+                html.unescape(ans) for ans in item.get("incorrect_answers", [])
+                ],
         )
