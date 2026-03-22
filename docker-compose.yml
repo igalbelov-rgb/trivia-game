@@ -1,11 +1,13 @@
 services:
-  # השם כאן חייב להיות זהה למה שמופיע ב-depends_on
-  trivia-app: 
-    build: .
-    image: trivia-game:latest
+  trivia-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: igalbelov/trivia-game:v1.0
     container_name: trivia_game
-    stdin_open: true
-    tty: true
+    stdin_open: true # שומר על ערוץ קלט פתוח
+    tty: true        # מקצה טרמינל וירטואלי (מונע קריסה של המשחק)
+    restart: always
     ports:
       - "8000:8000"
     networks:
@@ -14,11 +16,11 @@ services:
   prometheus:
     image: prom/prometheus
     container_name: prometheus
+    restart: always
     ports:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-    # כאן היה ה-ERROR: השם חייב להיות trivia-app (שם השירות)
     depends_on:
       - trivia-app
     networks:
@@ -27,12 +29,12 @@ services:
   grafana:
     image: grafana/grafana
     container_name: grafana
+    restart: always
     ports:
       - "3000:3000"
     volumes:
-      # אנחנו אומרים לדוקר: קח את מה שיש בתיקיית המוניטורינג אצלי, ושים אותו בתיקיית ההגדרות של גרפאנה
       - ./monitoring/dashboards:/var/lib/grafana/dashboards
-      - ./monitoring/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/provisioning:/etc/grafana/provisioning
     depends_on:
       - prometheus
     networks:
