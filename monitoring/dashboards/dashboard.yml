@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: 'TriviaDashboards'
+    type: file
+    options:
+      # הנתיב הזה הוא בתוך הקונטיינר (מה שהגדרנו ב-volumes למעלה)
+      path: /var/lib/grafana/dashboards
